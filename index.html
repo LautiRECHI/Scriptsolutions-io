@@ -6,7 +6,7 @@
 <title>ScriptSolutions — Agencia Digital</title>
 <meta name="description" content="Agencia especializada en desarrollo web, automatización y soluciones digitales para impulsar tu negocio.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -22,7 +22,8 @@
     --border: rgba(0, 212, 255, 0.15);
     --border-bright: rgba(0, 212, 255, 0.4);
     --mono: 'Space Mono', monospace;
-    --sans: 'Syne', sans-serif;
+    --sans: 'Space Mono', monospace;
+    --display: 'Orbitron', sans-serif;
   }
 
   html { scroll-behavior: smooth; }
@@ -195,11 +196,12 @@
   }
 
   .hero-h1 {
-    font-size: clamp(2.8rem, 7vw, 6rem);
-    font-weight: 800;
+    font-size: clamp(2.2rem, 6vw, 5rem);
+    font-weight: 900;
     line-height: 1.05;
-    letter-spacing: -0.02em;
+    letter-spacing: 0.02em;
     margin-bottom: 1.5rem;
+    font-family: var(--display);
     opacity: 0;
     animation: fadeUp 0.7s ease forwards 0.4s;
   }
@@ -394,9 +396,10 @@
   }
 
   .section-title {
-    font-size: clamp(1.8rem, 4vw, 3rem);
-    font-weight: 800;
-    letter-spacing: -0.02em;
+    font-size: clamp(1.6rem, 3.5vw, 2.6rem);
+    font-weight: 900;
+    font-family: var(--display);
+    letter-spacing: 0.03em;
     line-height: 1.1;
     margin-bottom: 1rem;
   }
@@ -408,7 +411,9 @@
   }
 
   /* ─── SERVICES ─── */
-  #servicios { background: var(--bg2); }
+  #servicios { background: var(--bg2); position: relative; overflow: hidden; }
+  #proyectos { background: var(--bg2); position: relative; overflow: hidden; }
+  #servicios .section-wrap, #proyectos .section-wrap { position: relative; z-index: 1; }
 
   .services-grid {
     display: grid;
@@ -984,7 +989,7 @@
   <div class="hero-bg-circle c2"></div>
 
   <div class="hero-inner">
-    <div class="hero-tag">Agencia Digital · Chaco - Argentina.</div>
+    <div class="hero-tag">Agencia Digital · Buenos Aires</div>
 
     <h1 class="hero-h1">
       Construimos<br>
@@ -1043,6 +1048,7 @@
 
 <!-- SERVICIOS -->
 <section id="servicios">
+  <canvas id="canvas-servicios" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;"></canvas>
   <div class="section-wrap">
     <div class="section-label">Lo que hacemos</div>
     <h2 class="section-title reveal">Nuestros Servicios</h2>
@@ -1153,6 +1159,7 @@
 
 <!-- PROYECTOS -->
 <section id="proyectos">
+  <canvas id="canvas-proyectos" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;"></canvas>
   <div class="section-wrap">
     <div class="section-label">Portfolio</div>
     <h2 class="section-title reveal">Proyectos destacados</h2>
@@ -1406,6 +1413,175 @@
       e.target.reset();
     }, 1200);
   }
+</script>
+<script>
+  function initGalaxyCanvas(canvasId) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const section = canvas.parentElement;
+    let W, H, bgStars, particles, shootingStars = [];
+    let mouse = {x:-999, y:-999, down:false};
+    let draggedParticle = null;
+    let dragOffsetX = 0, dragOffsetY = 0;
+    let t = 0, lastSpawn = 0, nextSpawnIn = 140;
+
+    function resize() {
+      W = canvas.width = section.offsetWidth;
+      H = canvas.height = section.offsetHeight;
+      bgStars = Array.from({length:120}, () => ({
+        x: Math.random()*W, y: Math.random()*H,
+        r: Math.random()*1.2+0.2,
+        speed: Math.random()*0.008+0.002,
+        phase: Math.random()*Math.PI*2
+      }));
+      particles = Array.from({length:55}, () => ({
+        x: Math.random()*W, y: Math.random()*H,
+        vx: (Math.random()-0.5)*0.5,
+        vy: (Math.random()-0.5)*0.5,
+        r: Math.random()*1.8+1,
+        color: Math.random()>0.5?'0,212,255':'150,180,255'
+      }));
+    }
+
+    function getPos(e) {
+      const rect = canvas.getBoundingClientRect();
+      const cx = e.touches ? e.touches[0].clientX : e.clientX;
+      const cy = e.touches ? e.touches[0].clientY : e.clientY;
+      return {x: cx-rect.left, y: cy-rect.top};
+    }
+
+    canvas.style.pointerEvents = 'auto';
+
+    canvas.addEventListener('mousedown', e => {
+      const pos = getPos(e);
+      mouse.x=pos.x; mouse.y=pos.y; mouse.down=true;
+      let closest=null, minD=25;
+      particles.forEach(p => {
+        const d=Math.hypot(p.x-pos.x, p.y-pos.y);
+        if(d<minD){minD=d;closest=p;}
+      });
+      if(closest){
+        draggedParticle=closest;
+        dragOffsetX=closest.x-pos.x;
+        dragOffsetY=closest.y-pos.y;
+        section.style.cursor='grabbing';
+      }
+    });
+
+    canvas.addEventListener('mousemove', e => {
+      const pos=getPos(e);
+      mouse.x=pos.x; mouse.y=pos.y;
+      if(mouse.down && draggedParticle){
+        draggedParticle.x=pos.x+dragOffsetX;
+        draggedParticle.y=pos.y+dragOffsetY;
+        draggedParticle.vx=0; draggedParticle.vy=0;
+      }
+    });
+
+    canvas.addEventListener('mouseup', () => {
+      mouse.down=false; draggedParticle=null;
+      section.style.cursor='';
+    });
+
+    canvas.addEventListener('mouseleave', () => {
+      mouse.x=-999; mouse.y=-999;
+    });
+
+    function spawnShootingStar() {
+      shootingStars.push({
+        x:Math.random()*W*0.7, y:Math.random()*H*0.3,
+        vx:Math.cos((Math.random()*20+25)*Math.PI/180)*(Math.random()*8+10),
+        vy:Math.sin((Math.random()*20+25)*Math.PI/180)*(Math.random()*8+10),
+        alpha:1, trail:[]
+      });
+    }
+
+    function draw() {
+      ctx.clearRect(0,0,W,H);
+
+      [{x:W*0.2,y:H*0.3,r:W*0.3,c:'rgba(0,50,120,0.18)'},{x:W*0.8,y:H*0.7,r:W*0.25,c:'rgba(0,30,80,0.14)'},{x:W*0.5,y:H*0.5,r:W*0.2,c:'rgba(0,80,150,0.1)'}].forEach(b=>{
+        const g=ctx.createRadialGradient(b.x,b.y,0,b.x,b.y,b.r);
+        g.addColorStop(0,b.c);g.addColorStop(1,'transparent');
+        ctx.fillStyle=g;ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fill();
+      });
+
+      bgStars.forEach(s=>{
+        const a=0.2+0.5*(0.5+0.5*Math.sin(t*s.speed+s.phase));
+        ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+        ctx.fillStyle=`rgba(255,255,255,${a})`;ctx.fill();
+      });
+
+      particles.forEach(p=>{
+        if(p===draggedParticle)return;
+        p.x+=p.vx;p.y+=p.vy;
+        if(p.x<0)p.x=W;if(p.x>W)p.x=0;
+        if(p.y<0)p.y=H;if(p.y>H)p.y=0;
+      });
+
+      for(let i=0;i<particles.length;i++){
+        for(let j=i+1;j<particles.length;j++){
+          const dx=particles[i].x-particles[j].x,dy=particles[i].y-particles[j].y;
+          const dist=Math.sqrt(dx*dx+dy*dy);
+          if(dist<120){
+            ctx.beginPath();ctx.moveTo(particles[i].x,particles[i].y);ctx.lineTo(particles[j].x,particles[j].y);
+            ctx.strokeStyle=`rgba(0,212,255,${0.25*(1-dist/120)})`;ctx.lineWidth=0.8;ctx.stroke();
+          }
+        }
+      }
+
+      if(!mouse.down){
+        let closest=null,minD=25;
+        particles.forEach(p=>{const d=Math.hypot(p.x-mouse.x,p.y-mouse.y);if(d<minD){minD=d;closest=p;}});
+        if(closest){
+          const g=ctx.createRadialGradient(closest.x,closest.y,0,closest.x,closest.y,18);
+          g.addColorStop(0,'rgba(0,212,255,0.35)');g.addColorStop(1,'transparent');
+          ctx.fillStyle=g;ctx.beginPath();ctx.arc(closest.x,closest.y,18,0,Math.PI*2);ctx.fill();
+        }
+      }
+
+      particles.forEach(p=>{
+        const isDragged=p===draggedParticle;
+        if(isDragged){
+          const g=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,14);
+          g.addColorStop(0,'rgba(0,212,255,0.5)');g.addColorStop(1,'transparent');
+          ctx.fillStyle=g;ctx.beginPath();ctx.arc(p.x,p.y,14,0,Math.PI*2);ctx.fill();
+        }
+        ctx.beginPath();ctx.arc(p.x,p.y,isDragged?p.r*2:p.r,0,Math.PI*2);
+        ctx.fillStyle=isDragged?'rgba(0,212,255,1)':`rgba(${p.color},0.85)`;ctx.fill();
+      });
+
+      if(t-lastSpawn>nextSpawnIn){
+        spawnShootingStar();
+        if(Math.random()>0.5)setTimeout(spawnShootingStar,300);
+        lastSpawn=t;nextSpawnIn=Math.random()*200+150;
+      }
+      shootingStars=shootingStars.filter(s=>s.alpha>0.02);
+      shootingStars.forEach(s=>{
+        s.trail.push({x:s.x,y:s.y});
+        if(s.trail.length>18)s.trail.shift();
+        s.x+=s.vx;s.y+=s.vy;s.alpha-=0.022;
+        for(let i=1;i<s.trail.length;i++){
+          const prog=i/s.trail.length;
+          ctx.beginPath();ctx.moveTo(s.trail[i-1].x,s.trail[i-1].y);ctx.lineTo(s.trail[i].x,s.trail[i].y);
+          ctx.strokeStyle=`rgba(255,255,255,${prog*s.alpha*0.9})`;ctx.lineWidth=prog*2;ctx.stroke();
+        }
+        const g=ctx.createRadialGradient(s.x,s.y,0,s.x,s.y,6);
+        g.addColorStop(0,`rgba(200,240,255,${s.alpha})`);g.addColorStop(1,'transparent');
+        ctx.fillStyle=g;ctx.beginPath();ctx.arc(s.x,s.y,6,0,Math.PI*2);ctx.fill();
+      });
+
+      t++;
+      requestAnimationFrame(draw);
+    }
+
+    resize();
+    draw();
+    window.addEventListener('resize', resize);
+  }
+
+  initGalaxyCanvas('canvas-servicios');
+  initGalaxyCanvas('canvas-proyectos');
 </script>
 </body>
 </html>
